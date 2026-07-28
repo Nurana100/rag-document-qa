@@ -85,7 +85,8 @@ if __name__ == "__main__":
 
     test_questions = [
         "How many vacation days do employees get?",
-        "What happens if I submit an expense report after 30 days?"
+        "What happens if I submit an expense report after 30 days?",
+        "What is the company's policy on annual bonuses?"  # NOT in the handbook — tests hallucination handling
     ]
 
     for question in test_questions:

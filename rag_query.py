@@ -18,21 +18,20 @@ Rules:
 
 
 def retrieve_context(query, vector_store, k=2):
-    """
-    Retrieves the top-k most relevant chunks for the query.
-    Returns both the combined text (for the prompt) and the raw
-    documents (so we can cite sources later in Checkpoint 5).
-    """
-    results = vector_store.similarity_search(query, k=k)
-    return results
+    return vector_store.similarity_search(query, k=k)
 
 
 def build_prompt(query, retrieved_docs):
     """
     Builds a prompt with clear separation between retrieved context
-    and the actual question/instructions.
+    and the actual question. Each chunk is labeled [Source N] so the
+    model (and we, afterward) can reference exactly which chunk was used.
     """
-    context_text = "\n\n---\n\n".join(doc.page_content for doc in retrieved_docs)
+    context_blocks = []
+    for i, doc in enumerate(retrieved_docs, start=1):
+        context_blocks.append(f"[Source {i}]\n{doc.page_content}")
+
+    context_text = "\n\n---\n\n".join(context_blocks)
 
     user_message = f"""CONTEXT:
 {context_text}
@@ -45,6 +44,21 @@ QUESTION:
 Answer the question using only the CONTEXT above."""
 
     return user_message
+
+
+def format_sources(retrieved_docs):
+    """
+    Builds a human-readable list of where each retrieved chunk came from:
+    file name + a short preview of the chunk content.
+    """
+    lines = []
+    for i, doc in enumerate(retrieved_docs, start=1):
+        source_file = doc.metadata.get("source", "unknown file")
+        preview = doc.page_content.strip().replace("\n", " ")
+        if len(preview) > 80:
+            preview = preview[:80] + "..."
+        lines.append(f"  [Source {i}] {source_file} — \"{preview}\"")
+    return "\n".join(lines)
 
 
 def ask(query, vector_store, k=2):
@@ -78,5 +92,6 @@ if __name__ == "__main__":
         print(f"Question: {question}")
         answer, sources = ask(question, store)
         print(f"Answer: {answer}\n")
-        print(f"Retrieved from {len(sources)} chunk(s).")
+        print("Sources used:")
+        print(format_sources(sources))
         print("=" * 60)
